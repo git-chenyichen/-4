@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>嘉華中學 無人機校隊 國一4 訓練登記系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-slate-200 selection:text-slate-900">
+
+  <script>
+    function parseEnvUsers(envVarName) {
+      try {
+        if (typeof process !== 'undefined' && process.env && process.env[envVarName]) {
+          return JSON.parse(process.env[envVarName]);
+        }
+      } catch (e) {
+        console.error(`解析環境變數 ${envVarName} 失敗:`, e);
+      }
+      return {};
+    }
+
+    const ENV_ACCOUNTS = {
+      ADMINS: parseEnvUsers('ADMINS'),
+      STUDENTS: parseEnvUsers('STUDENTS')
+    };
+  </script>
+
+  <div id="app" class="w-full max-w-5xl mx-auto p-4 sm:p-6 md:p-8 flex-grow">
+    
+    <header class="border-b border-slate-200 pb-5 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <div class="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1">嘉華中學 無人機校隊</div>
+        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">國一4 訓練登記系統</h1>
+      </div>
+      <div id="navRight" class="hidden flex-wrap items-center gap-3">
+        <span id="roleBadge" class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"></span>
+        <button id="adminToggleBtn" onclick="switchPortalView()" class="hidden text-xs px-3 py-1.5 border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">切換模式</button>
+        <button onclick="logout()" class="text-xs px-3 py-1.5 text-slate-500 hover:text-slate-900 transition-colors">登出</button>
+      </div>
+    </header>
+
+    <section id="viewLogin" class="max-w-sm mx-auto my-12">
+      <div class="bg-white border border-slate-200 p-6 sm:p-8 shadow-sm">
+        <h2 class="text-lg font-medium text-slate-900 mb-6 border-b border-slate-100 pb-3">身分驗證</h2>
+        
+        <div class="mb-6 flex border-b border-slate-200">
+          <button id="tabStudent" onclick="setRole('student')" class="flex-1 py-2 text-sm font-medium border-b-2 border-slate-900 text-slate-900 text-center">一般學生</button>
+          <button id="tabAdmin" onclick="setRole('admin')" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-slate-400 text-center hover:text-slate-600">管理者</button>
+        </div>
+
+        <form onsubmit="handleLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1" id="userLabel">帳號 / 學號</label>
+            <input type="text" id="username" required autocomplete="username" class="w-full px-3 py-2 text-sm border border-slate-200 focus:outline-none focus:border-slate-800 transition-colors" placeholder="請輸入帳號" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">密碼</label>
+            <input type="password" id="password" required autocomplete="current-password" class="w-full px-3 py-2 text-sm border border-slate-200 focus:outline-none focus:border-slate-800 transition-colors" placeholder="請輸入密碼" />
+          </div>
+          <p id="loginError" class="text-xs text-rose-600 hidden"></p>
+          <button type="submit" class="w-full bg-slate-900 text-white text-sm py-2.5 hover:bg-slate-800 transition-colors font-medium">登入系統</button>
+        </form>
+      </div>
+    </section>
+
+    <div id="viewMain" class="hidden">
+      <div class="flex border-b border-slate-200 mb-8 overflow-x-auto">
+        <button id="navBooking" onclick="switchTab('booking')" class="py-3 px-4 text-sm font-medium border-b-2 border-slate-900 text-slate-900 whitespace-nowrap">登記訓練</button>
+        <button id="navCalendar" onclick="switchTab('calendar')" class="py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">當月月曆與名單</button>
+        <button id="navAdmin" onclick="switchTab('admin')" class="hidden py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">管理員控制台</button>
+      </div>
+
+      <div id="tabContentBooking" class="space-y-6">
+        <div class="bg-white border border-slate-200 p-6">
+          <h3 class="text-base font-semibold text-slate-900 mb-4">預約訓練時段</h3>
+          <form onsubmit="handleRegistration(event)" class="space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-medium text-slate-500 mb-1">選擇日期</label>
+                <input type="date" id="regDate" required onchange="handleDateChange()" class="w-full px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-slate-800" />
+                <p id="dateNotice" class="text-xs text-slate-500 mt-1"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-500 mb-1">訓練時段</label>
+                <select id="regTime" required class="w-full px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-slate-800">
+                  <option value="">-- 請先選擇日期 --</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="nightNotice" class="hidden bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+              <strong>課後/夜間時段提醒：</strong> 如有晚自習或夜課輔，需向相關單位完成請假手續後才可登記訓練。
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">登記姓名</label>
+              <input type="text" id="regStudentName" required class="w-full px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-slate-800" placeholder="請輸入真實姓名" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">備註說明 (選填)</label>
+              <textarea id="regNotes" rows="2" class="w-full px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-slate-800" placeholder="特殊需求或說明..."></textarea>
+            </div>
+
+            <button type="submit" id="regSubmitBtn" class="bg-slate-900 text-white text-sm px-6 py-2.5 hover:bg-slate-800 transition-colors font-medium">確認送出登記</button>
+          </form>
+        </div>
+
+        <div class="bg-white border border-slate-200 p-6">
+          <h3 class="text-base font-semibold text-slate-900 mb-4">個人登記紀錄</h3>
+          <div id="myRegistrationsList" class="space-y-2">
+            <p class="text-sm text-slate-400 italic">尚無登記紀錄</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="tabContentCalendar" class="hidden space-y-6">
+        <div class="bg-white border border-slate-200 p-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h3 id="calendarMonthTitle" class="text-lg font-bold text-slate-900">當月行事曆</h3>
+              <p class="text-xs text-slate-500">點擊日期可檢視當日詳細出席人員</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="changeMonth(-1)" class="px-3 py-1 border border-slate-200 text-sm hover:bg-slate-50">&larr; 上個月</button>
+              <button onclick="changeMonth(1)" class="px-3 py-1 border border-slate-200 text-sm hover:bg-slate-50">下個月 &rarr;</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 text-center">
+            <div class="bg-slate-50 py-2 text-xs font-semibold text-slate-600">日</div>
+            <div class="bg-slate-50 py-2 text-xs font-semibold text-slate-600">一</div>
+            <div class="bg-slate-50 py-2 text-xs font-semibold text-slate-600">二</div>
+            <div class="bg-slate-50 py-2 text-xs font-semibold text-slate-600">三</div>
+            <div class="bg-slate-50 py-2 text-xs font-semibold text-slate-600">四</div>
+            <div class="bg-slate-50 py-2 text-xs font-semibold text-slate-600">五</div>
+            <div class="bg-slate-50 py-2 text-xs font-semibold text-slate-600">六</div>
+          </div>
+          <div id="calendarGrid" class="grid grid-cols-7 gap-px bg-slate-200 border-x border-b border-slate-200 min-h-[360px]">
+          </div>
+        </div>
+
+        <div id="dayDetailCard" class="bg-white border border-slate-200 p-6 hidden">
+          <h4 id="selectedDateTitle" class="text-sm font-bold text-slate-900 mb-3 border-b border-slate-100 pb-2">當日登記名單</h4>
+          <div id="selectedDateRoster" class="space-y-2">
+          </div>
+        </div>
+      </div>
+
+      <div id="tabContentAdmin" class="hidden space-y-6">
+        <div class="bg-white border border-slate-200 p-6">
+          <h3 class="text-base font-semibold text-slate-900 mb-1">週六開放時段設定</h3>
+          <p class="text-xs text-slate-500 mb-4">週六訓練時間由指導老師決定，可於此設定特定週六的開放狀態與時段。</p>
+          
+          <form onsubmit="handleSaturdayConfig(event)" class="space-y-4 max-w-lg">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">選擇週六日期</label>
+              <input type="date" id="adminSatDate" required class="w-full px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-slate-800" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">開放狀態</label>
+              <select id="adminSatStatus" class="w-full px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-slate-800">
+                <option value="open">開放訓練</option>
+                <option value="closed">不開放</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">指導老師指定時間區間</label>
+              <input type="text" id="adminSatTime" placeholder="例如：09:00 ~ 12:00" class="w-full px-3 py-2 border border-slate-200 text-sm focus:outline-none focus:border-slate-800" />
+            </div>
+            <button type="submit" class="bg-slate-900 text-white text-xs px-4 py-2 hover:bg-slate-800 transition-colors">更新週六設定</button>
+          </form>
+        </div>
+
+        <div class="bg-white border border-slate-200 p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-base font-semibold text-slate-900">全校隊訓練登記總表</h3>
+            <span id="regCountBadge" class="text-xs px-2 py-1 bg-slate-100 text-slate-600 border border-slate-200">0 筆紀錄</span>
+          </div>
+
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left text-xs text-slate-600 border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-slate-900 font-semibold">
+                  <th class="p-3">日期</th>
+                  <th class="p-3">時段</th>
+                  <th class="p-3">學生姓名</th>
+                  <th class="p-3">登記帳號</th>
+                  <th class="p-3">備註</th>
+                  <th class="p-3 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="adminTableBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
+      <p>嘉華中學 無人機校隊 國一4 訓練登記系統 &copy; 2026</p>
+    </footer>
+
+  </div>
+
+  <script>
+    let currentRole = 'student'; 
+    let currentUser = null;
+    let activePortal = 'student'; 
+    let currentTab = 'booking'; 
+    let selectedCalendarDate = null;
+    
+    let calendarYear = new Date().getFullYear();
+    let calendarMonth = new Date().getMonth(); 
+
+
+    let registrations = JSON.parse(localStorage.getItem('jiahua_drone_registrations')) || [];
+    let saturdayConfigs = JSON.parse(localStorage.getItem('jiahua_drone_sat_configs')) || {};
+
+    const WEEKDAY_TIME_OPTIONS = [
+      { id: 'noon', label: '13:25 ~ 13:55 (午休時段)' },
+      { id: 'night_early', label: '17:30 ~ 20:40 (課後/夜間時段)' },
+      { id: 'night_late', label: '19:30 ~ 20:40 (夜間時段)' }
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById('regDate').value = todayStr;
+      handleDateChange();
+      renderRegistrations();
+    });
+
+    function setRole(role) {
+      currentRole = role;
+      const tabStudent = document.getElementById('tabStudent');
+      const tabAdmin = document.getElementById('tabAdmin');
+      
+      if (role === 'student') {
+        tabStudent.className = "flex-1 py-2 text-sm font-medium border-b-2 border-slate-900 text-slate-900 text-center";
+        tabAdmin.className = "flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-slate-400 text-center hover:text-slate-600";
+        document.getElementById('userLabel').innerText = "帳號 / 學號";
+      } else {
+        tabAdmin.className = "flex-1 py-2 text-sm font-medium border-b-2 border-slate-900 text-slate-900 text-center";
+        tabStudent.className = "flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-slate-400 text-center hover:text-slate-600";
+        document.getElementById('userLabel').innerText = "管理者帳號";
+      }
+      document.getElementById('loginError').classList.add('hidden');
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const userVal = document.getElementById('username').value.trim();
+      const passVal = document.getElementById('password').value.trim();
+      const errorEl = document.getElementById('loginError');
+
+      if (currentRole === 'admin') {
+        const adminUsers = ENV_ACCOUNTS.ADMINS;
+        if (Object.keys(adminUsers).length > 0) {
+          if (adminUsers[userVal] && adminUsers[userVal] === passVal) {
+            currentUser = { username: userVal, role: 'admin', name: userVal };
+            loginSuccess();
+          } else {
+            errorEl.innerText = "管理者帳號或密碼錯誤。";
+            errorEl.classList.remove('hidden');
+          }
+        } else {
+          if (userVal.length > 0 && passVal.length > 0) {
+            currentUser = { username: userVal, role: 'admin', name: userVal };
+            loginSuccess();
+          } else {
+            errorEl.innerText = "請輸入有效的管理者帳號與密碼。";
+            errorEl.classList.remove('hidden');
+          }
+        }
+      } else {
+        const studentUsers = ENV_ACCOUNTS.STUDENTS;
+        if (Object.keys(studentUsers).length > 0) {
+          if (studentUsers[userVal] && studentUsers[userVal] === passVal) {
+            currentUser = { username: userVal, role: 'student', name: userVal };
+            loginSuccess();
+          } else {
+            errorEl.innerText = "學生帳號或密碼錯誤。";
+            errorEl.classList.remove('hidden');
+          }
+        } else {
+          if (userVal.length > 0 && passVal.length > 0) {
+            currentUser = { username: userVal, role: 'student', name: userVal };
+            loginSuccess();
+          } else {
+            errorEl.innerText = "請輸入有效的學生帳號與密碼。";
+            errorEl.classList.remove('hidden');
+          }
+        }
+      }
+    }
+
+    function loginSuccess() {
+      document.getElementById('viewLogin').classList.add('hidden');
+      document.getElementById('viewMain').classList.remove('hidden');
+      document.getElementById('navRight').classList.remove('hidden');
+      document.getElementById('navRight').classList.add('flex');
+
+      activePortal = currentUser.role;
+      updateHeaderBadge();
+
+      if (currentUser.role === 'admin') {
+        document.getElementById('adminToggleBtn').classList.remove('hidden');
+        document.getElementById('navAdmin').classList.remove('hidden');
+      } else {
+        document.getElementById('adminToggleBtn').classList.add('hidden');
+        document.getElementById('navAdmin').classList.add('hidden');
+      }
+
+      document.getElementById('regStudentName').value = currentUser.name;
+      switchTab('booking');
+    }
+
+    function logout() {
+      currentUser = null;
+      document.getElementById('viewLogin').classList.remove('hidden');
+      document.getElementById('viewMain').classList.add('hidden');
+      document.getElementById('navRight').classList.add('hidden');
+      document.getElementById('username').value = '';
+      document.getElementById('password').value = '';
+    }
+
+    function switchPortalView() {
+      if (currentUser.role !== 'admin') return;
+      activePortal = activePortal === 'admin' ? 'student' : 'admin';
+      updateHeaderBadge();
+      
+      if (activePortal === 'admin') {
+        switchTab('admin');
+      } else {
+        switchTab('booking');
+      }
+    }
+
+    function updateHeaderBadge() {
+      const badge = document.getElementById('roleBadge');
+      if (activePortal === 'admin') {
+        badge.innerText = `管理者模式 (${currentUser.username})`;
+        badge.className = "inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-slate-900 text-white";
+      } else {
+        badge.innerText = `學生模式 (${currentUser.username})`;
+        badge.className = "inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200";
+      }
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      
+      const tabBooking = document.getElementById('navBooking');
+      const tabCalendar = document.getElementById('navCalendar');
+      const tabAdmin = document.getElementById('navAdmin');
+
+      const contentBooking = document.getElementById('tabContentBooking');
+      const contentCalendar = document.getElementById('tabContentCalendar');
+      const contentAdmin = document.getElementById('tabContentAdmin');
+
+      [tabBooking, tabCalendar, tabAdmin].forEach(el => {
+        el.className = "py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap";
+      });
+
+      contentBooking.classList.add('hidden');
+      contentCalendar.classList.add('hidden');
+      contentAdmin.classList.add('hidden');
+
+      if (tab === 'booking') {
+        tabBooking.className = "py-3 px-4 text-sm font-medium border-b-2 border-slate-900 text-slate-900 whitespace-nowrap";
+        contentBooking.classList.remove('hidden');
+      } else if (tab === 'calendar') {
+        tabCalendar.className = "py-3 px-4 text-sm font-medium border-b-2 border-slate-900 text-slate-900 whitespace-nowrap";
+        contentCalendar.classList.remove('hidden');
+        renderCalendar();
+      } else if (tab === 'admin') {
+        tabAdmin.className = "py-3 px-4 text-sm font-medium border-b-2 border-slate-900 text-slate-900 whitespace-nowrap";
+        contentAdmin.classList.remove('hidden');
+        renderAdminTable();
+      }
+    }
+
+    function handleDateChange() {
+      const dateVal = document.getElementById('regDate').value;
+      const timeSelect = document.getElementById('regTime');
+      const dateNotice = document.getElementById('dateNotice');
+      const submitBtn = document.getElementById('regSubmitBtn');
+      const nightNotice = document.getElementById('nightNotice');
+
+      timeSelect.innerHTML = '';
+      nightNotice.classList.add('hidden');
+
+      if (!dateVal) {
+        timeSelect.innerHTML = '<option value="">-- 請先選擇日期 --</option>';
+        return;
+      }
+
+      const dateObj = new Date(dateVal + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay();
+
+      if (dayOfWeek === 0) {
+        dateNotice.innerText = "週日不開放登記訓練。";
+        dateNotice.className = "text-xs text-rose-600 font-medium mt-1";
+        timeSelect.innerHTML = '<option value="">-- 週日不開放 --</option>';
+        submitBtn.disabled = true;
+        submitBtn.className = "bg-slate-300 text-slate-500 text-sm px-6 py-2.5 cursor-not-allowed font-medium";
+        return;
+      }
+
+      if (dayOfWeek === 6) {
+        const satConfig = saturdayConfigs[dateVal];
+        if (satConfig && satConfig.status === 'open') {
+          dateNotice.innerText = `週六由指導老師開放訓練（時段：${satConfig.timeSlot}）。`;
+          dateNotice.className = "text-xs text-emerald-600 font-medium mt-1";
+          
+          const opt = document.createElement('option');
+          opt.value = satConfig.timeSlot;
+          opt.innerText = `週六時段：${satConfig.timeSlot}`;
+          timeSelect.appendChild(opt);
+
+          submitBtn.disabled = false;
+          submitBtn.className = "bg-slate-900 text-white text-sm px-6 py-2.5 hover:bg-slate-800 transition-colors font-medium";
+        } else {
+          dateNotice.innerText = "該週六由指導老師決定：目前暫不開放登記。";
+          dateNotice.className = "text-xs text-amber-600 font-medium mt-1";
+          timeSelect.innerHTML = '<option value="">-- 週六暫不開放 --</option>';
+          submitBtn.disabled = true;
+          submitBtn.className = "bg-slate-300 text-slate-500 text-sm px-6 py-2.5 cursor-not-allowed font-medium";
+        }
+        return;
+      }
+
+      dateNotice.innerText = "週一至週五正常開放時段。";
+      dateNotice.className = "text-xs text-slate-500 mt-1";
+      submitBtn.disabled = false;
+      submitBtn.className = "bg-slate-900 text-white text-sm px-6 py-2.5 hover:bg-slate-800 transition-colors font-medium";
+
+      WEEKDAY_TIME_OPTIONS.forEach(opt => {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt.label;
+        optionEl.innerText = opt.label;
+        timeSelect.appendChild(optionEl);
+      });
+
+      timeSelect.addEventListener('change', checkNightNotice);
+      checkNightNotice();
+    }
+
+    function checkNightNotice() {
+      const timeVal = document.getElementById('regTime').value;
+      const nightNotice = document.getElementById('nightNotice');
+      if (timeVal.includes('17:30') || timeVal.includes('19:30')) {
+        nightNotice.classList.remove('hidden');
+      } else {
+        nightNotice.classList.add('hidden');
+      }
+    }
+
+    function handleRegistration(e) {
+      e.preventDefault();
+      const dateVal = document.getElementById('regDate').value;
+      const timeVal = document.getElementById('regTime').value;
+      const studentName = document.getElementById('regStudentName').value.trim();
+      const notes = document.getElementById('regNotes').value.trim();
+
+      if (!dateVal || !timeVal || !studentName) {
+        alert("請完整填寫日期、時段與姓名。");
+        return;
+      }
+
+      const newRecord = {
+        id: 'reg_' + Date.now(),
+        date: dateVal,
+        time: timeVal,
+        studentName: studentName,
+        account: currentUser.username,
+        notes: notes,
+        createdAt: new Date().toISOString()
+      };
+
+      registrations.push(newRecord);
+      localStorage.setItem('jiahua_drone_registrations', JSON.stringify(registrations));
+
+      alert("訓練登記成功！");
+      document.getElementById('regNotes').value = '';
+      renderRegistrations();
+    }
+
+    function renderRegistrations() {
+      const container = document.getElementById('myRegistrationsList');
+      const myRegs = registrations.filter(r => r.account === currentUser.username);
+
+      if (myRegs.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-400 italic">尚無登記紀錄</p>';
+        return;
+      }
+
+      container.innerHTML = myRegs.map(r => `
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-slate-50 border border-slate-200 text-xs text-slate-700">
+          <div>
+            <span class="font-bold text-slate-900 mr-2">${r.date}</span>
+            <span class="px-1.5 py-0.5 bg-slate-200 rounded text-slate-800 mr-2">${r.time}</span>
+            <span>姓名: ${r.studentName}</span>
+            ${r.notes ? `<p class="text-slate-500 mt-1">備註: ${r.notes}</p>` : ''}
+          </div>
+          <button onclick="cancelRegistration('${r.id}')" class="mt-2 sm:mt-0 text-rose-600 hover:text-rose-800 text-xs">取消登記</button>
+        </div>
+      `).join('');
+    }
+
+    function cancelRegistration(id) {
+      if (!confirm("確定要取消此筆登記嗎？")) return;
+      registrations = registrations.filter(r => r.id !== id);
+      localStorage.setItem('jiahua_drone_registrations', JSON.stringify(registrations));
+      renderRegistrations();
+      if (currentTab === 'calendar') renderCalendar();
+      if (currentTab === 'admin') renderAdminTable();
+    }
+
+    function changeMonth(delta) {
+      calendarMonth += delta;
+      if (calendarMonth < 0) {
+        calendarMonth = 11;
+        calendarYear--;
+      } else if (calendarMonth > 11) {
+        calendarMonth = 0;
+        calendarYear++;
+      }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const titleEl = document.getElementById('calendarMonthTitle');
+      const gridEl = document.getElementById('calendarGrid');
+      gridEl.innerHTML = '';
+
+      const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+      titleEl.innerText = `${calendarYear} 年 ${monthNames[calendarMonth]}`;
+
+      const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+      const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = "bg-white p-2 min-h-[70px] opacity-40";
+        gridEl.appendChild(emptyCell);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayOfWeek = new Date(calendarYear, calendarMonth, day).getDay();
+        
+        const dayRegs = registrations.filter(r => r.date === dateStr);
+        const uniqueAttendees = [...new Set(dayRegs.map(r => r.studentName))];
+
+        const cell = document.createElement('div');
+        cell.className = "bg-white p-2 min-h-[85px] flex flex-col justify-between hover:bg-slate-50 cursor-pointer border-t border-slate-100 transition-colors";
+        cell.onclick = () => selectCalendarDay(dateStr, dayOfWeek, dayRegs);
+
+        let statusText = '';
+        if (dayOfWeek === 0) statusText = '<span class="text-[10px] text-rose-500">週日休館</span>';
+        else if (dayOfWeek === 6) {
+          const satConfig = saturdayConfigs[dateStr];
+          statusText = (satConfig && satConfig.status === 'open') ? '<span class="text-[10px] text-emerald-600">老師開放</span>' : '<span class="text-[10px] text-slate-400">未開放</span>';
+        }
+
+        cell.innerHTML = `
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-xs font-bold text-slate-800">${day}</span>
+              ${statusText}
+            </div>
+            ${uniqueAttendees.length > 0 ? `
+              <div class="space-y-0.5 mt-1">
+                ${uniqueAttendees.slice(0, 2).map(name => `<div class="text-[10px] bg-slate-100 text-slate-700 px-1 truncate rounded">${name}</div>`).join('')}
+                ${uniqueAttendees.length > 2 ? `<div class="text-[9px] text-slate-400 font-medium">+${uniqueAttendees.length - 2} 人</div>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+
+        gridEl.appendChild(cell);
+      }
+    }
+
+    function selectCalendarDay(dateStr, dayOfWeek, dayRegs) {
+      const card = document.getElementById('dayDetailCard');
+      const title = document.getElementById('selectedDateTitle');
+      const roster = document.getElementById('selectedDateRoster');
+
+      card.classList.remove('hidden');
+      const weekNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+      title.innerText = `${dateStr} (${weekNames[dayOfWeek]}) 訓練人數清單`;
+
+      if (dayRegs.length === 0) {
+        roster.innerHTML = '<p class="text-xs text-slate-400 italic">當日尚無登記人員</p>';
+        return;
+      }
+
+      roster.innerHTML = dayRegs.map(r => `
+        <div class="flex justify-between items-center text-xs p-2 bg-slate-50 border border-slate-200">
+          <div>
+            <span class="font-bold text-slate-900">${r.studentName}</span>
+            <span class="ml-2 text-slate-500">(${r.time})</span>
+          </div>
+          ${r.notes ? `<span class="text-slate-400 text-[11px]">${r.notes}</span>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function handleSaturdayConfig(e) {
+      e.preventDefault();
+      const dateVal = document.getElementById('adminSatDate').value;
+      const statusVal = document.getElementById('adminSatStatus').value;
+      const timeVal = document.getElementById('adminSatTime').value.trim();
+
+      if (!dateVal) return;
+
+      const dateObj = new Date(dateVal + 'T00:00:00');
+      if (dateObj.getDay() !== 6) {
+        alert("請選擇正確的「星期六」日期！");
+        return;
+      }
+
+      saturdayConfigs[dateVal] = {
+        status: statusVal,
+        timeSlot: timeVal || '社師指定時段'
+      };
+
+      localStorage.setItem('jiahua_drone_sat_configs', JSON.stringify(saturdayConfigs));
+      alert("週六時間與狀態更新完畢！");
+      handleDateChange();
+    }
+
+    function renderAdminTable() {
+      const tbody = document.getElementById('adminTableBody');
+      const badge = document.getElementById('regCountBadge');
+
+      badge.innerText = `${registrations.length} 筆紀錄`;
+
+      if (registrations.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">目前沒有任何登記資料</td></tr>';
+        return;
+      }
+
+      const sorted = [...registrations].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      tbody.innerHTML = sorted.map(r => `
+        <tr class="border-b border-slate-100 hover:bg-slate-50">
+          <td class="p-3 font-medium text-slate-900">${r.date}</td>
+          <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700">${r.time}</span></td>
+          <td class="p-3 font-bold text-slate-800">${r.studentName}</td>
+          <td class="p-3 text-slate-500">${r.account}</td>
+          <td class="p-3 text-slate-500">${r.notes || '-'}</td>
+          <td class="p-3 text-right">
+            <button onclick="cancelRegistration('${r.id}')" class="text-rose-600 hover:underline">刪除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
