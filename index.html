@@ -263,7 +263,6 @@
     let calendarYear = new Date().getFullYear();
     let calendarMonth = new Date().getMonth(); 
 
-
     let registrations = JSON.parse(localStorage.getItem('jiahua_drone_registrations')) || [];
     let saturdayConfigs = JSON.parse(localStorage.getItem('jiahua_drone_sat_configs')) || {};
 
@@ -305,41 +304,21 @@
 
       if (currentRole === 'admin') {
         const adminUsers = ENV_ACCOUNTS.ADMINS;
-        if (Object.keys(adminUsers).length > 0) {
-          if (adminUsers[userVal] && adminUsers[userVal] === passVal) {
-            currentUser = { username: userVal, role: 'admin', name: userVal };
-            loginSuccess();
-          } else {
-            errorEl.innerText = "管理者帳號或密碼錯誤。";
-            errorEl.classList.remove('hidden');
-          }
+        if (adminUsers && adminUsers[userVal] && adminUsers[userVal] === passVal) {
+          currentUser = { username: userVal, role: 'admin', name: userVal };
+          loginSuccess();
         } else {
-          if (userVal.length > 0 && passVal.length > 0) {
-            currentUser = { username: userVal, role: 'admin', name: userVal };
-            loginSuccess();
-          } else {
-            errorEl.innerText = "請輸入有效的管理者帳號與密碼。";
-            errorEl.classList.remove('hidden');
-          }
+          errorEl.innerText = "管理者帳號或密碼錯誤。";
+          errorEl.classList.remove('hidden');
         }
       } else {
         const studentUsers = ENV_ACCOUNTS.STUDENTS;
-        if (Object.keys(studentUsers).length > 0) {
-          if (studentUsers[userVal] && studentUsers[userVal] === passVal) {
-            currentUser = { username: userVal, role: 'student', name: userVal };
-            loginSuccess();
-          } else {
-            errorEl.innerText = "學生帳號或密碼錯誤。";
-            errorEl.classList.remove('hidden');
-          }
+        if (studentUsers && studentUsers[userVal] && studentUsers[userVal] === passVal) {
+          currentUser = { username: userVal, role: 'student', name: userVal };
+          loginSuccess();
         } else {
-          if (userVal.length > 0 && passVal.length > 0) {
-            currentUser = { username: userVal, role: 'student', name: userVal };
-            loginSuccess();
-          } else {
-            errorEl.innerText = "請輸入有效的學生帳號與密碼。";
-            errorEl.classList.remove('hidden');
-          }
+          errorEl.innerText = "學生帳號或密碼錯誤。";
+          errorEl.classList.remove('hidden');
         }
       }
     }
@@ -375,7 +354,10 @@
     }
 
     function switchPortalView() {
-      if (currentUser.role !== 'admin') return;
+      if (!currentUser || currentUser.role !== 'admin') {
+        alert("權限不足：您非管理者，無法切換模式。");
+        return;
+      }
       activePortal = activePortal === 'admin' ? 'student' : 'admin';
       updateHeaderBadge();
       
@@ -398,6 +380,11 @@
     }
 
     function switchTab(tab) {
+      if (tab === 'admin' && (!currentUser || currentUser.role !== 'admin')) {
+        alert("權限不足：普通學生無法存取管理員控制台！");
+        return;
+      }
+
       currentTab = tab;
       
       const tabBooking = document.getElementById('navBooking');
