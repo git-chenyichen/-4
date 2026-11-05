@@ -27,23 +27,9 @@
     .custom-scrollbar::-webkit-scrollbar { width: 3px; height: 3px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
-    
-    .loading-spinner {
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #0f172a;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-slate-200">
-
-  <div id="syncLoader" class="fixed top-0 left-0 w-full h-1 bg-slate-200 overflow-hidden z-50 hidden">
-    <div class="bg-slate-900 h-full animate-pulse w-full"></div>
-  </div>
 
   <script>
     const ENV_ACCOUNTS = {
@@ -56,8 +42,6 @@
         "s50167": "50167"
       }
     };
-
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlNzU6sVK9qWpbszb-v-aZMc1xJelyTx-NECyA0AeY6EkCsz9LRRUhb-3_TElpkMHO/exec";
   </script>
 
   <div id="app" class="w-full max-w-4xl mx-auto p-4 sm:p-6 flex-grow">
@@ -108,12 +92,7 @@
 
       <div id="tabContentBooking" class="space-y-6">
         <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-base font-semibold text-slate-900">預約訓練時段</h3>
-            <button onclick="fetchCloudData()" class="text-xs text-slate-500 flex items-center gap-1 active:text-slate-900">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> 同步雲端
-            </button>
-          </div>
+          <h3 class="text-base font-semibold text-slate-900 mb-4">預約訓練時段</h3>
           <form onsubmit="handleRegistration(event)" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -150,7 +129,7 @@
         <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
           <h3 class="text-base font-semibold text-slate-900 mb-3">個人登記紀錄</h3>
           <div id="myRegistrationsList" class="space-y-2.5">
-            <p class="text-xs text-slate-400 italic">資料載入中...</p>
+            <p class="text-xs text-slate-400 italic">尚無登記紀錄</p>
           </div>
         </div>
       </div>
@@ -188,7 +167,7 @@
       <div id="tabContentAdmin" class="hidden space-y-6">
         <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
           <h3 class="text-base font-semibold text-slate-900 mb-1">週六開放時段設定</h3>
-          <p class="text-xs text-slate-500 mb-4">特定週六的開放狀態將實時同步給所有學生。</p>
+          <p class="text-xs text-slate-500 mb-4">由指導老師設定特定週六的開放狀態與時段。</p>
           
           <form onsubmit="handleSaturdayConfig(event)" class="space-y-4 max-w-lg">
             <div>
@@ -206,7 +185,7 @@
               <label class="block text-xs font-medium text-slate-500 mb-1">指導老師指定時間區間</label>
               <input type="text" id="adminSatTime" placeholder="例如：09:00 ~ 12:00" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
             </div>
-            <button type="submit" class="bg-slate-900 text-white text-xs px-5 py-2.5 rounded-xl font-medium active:bg-slate-800">儲存並同步至雲端</button>
+            <button type="submit" class="bg-slate-900 text-white text-xs px-5 py-2.5 rounded-xl font-medium active:bg-slate-800">儲存設定</button>
           </form>
         </div>
 
@@ -252,8 +231,8 @@
     let calendarYear = new Date().getFullYear();
     let calendarMonth = new Date().getMonth(); 
 
-    let registrations = [];
-    let saturdayConfigs = {};
+    let registrations = JSON.parse(localStorage.getItem('drone_regs')) || [];
+    let saturdayConfigs = JSON.parse(localStorage.getItem('drone_sats')) || {};
 
     const WEEKDAY_TIME_OPTIONS = [
       { id: 'noon', label: '13:25 ~ 13:55 (午休時段)' },
@@ -266,45 +245,6 @@
       document.getElementById('regDate').value = todayStr;
       handleDateChange();
     });
-
-    async function fetchCloudData() {
-      showLoader(true);
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL);
-        const data = await res.json();
-        registrations = data.registrations || [];
-        saturdayConfigs = data.satConfigs || {};
-        
-        renderRegistrations();
-        if (currentTab === 'calendar') renderCalendar();
-        if (currentTab === 'admin') renderAdminTable();
-      } catch (e) {
-        console.error("雲端同步失敗:", e);
-      } finally {
-        showLoader(false);
-      }
-    }
-
-    async function sendCloudAction(payload) {
-      showLoader(true);
-      try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-        await fetchCloudData();
-      } catch (e) {
-        alert("網路連線失敗，請稍後再試！");
-      } finally {
-        showLoader(false);
-      }
-    }
-
-    function showLoader(show) {
-      const loader = document.getElementById('syncLoader');
-      if (show) loader.classList.remove('hidden');
-      else loader.classList.add('hidden');
-    }
 
     function setRole(role) {
       currentRole = role;
@@ -359,7 +299,10 @@
 
       document.getElementById('regStudentName').value = currentUser.name;
       switchTab('booking');
-      fetchCloudData(); 
+      
+      renderRegistrations();
+      renderCalendar();
+      renderAdminTable();
     }
 
     function logout() {
@@ -504,7 +447,7 @@
       }
     }
 
-    async function handleRegistration(e) {
+    function handleRegistration(e) {
       e.preventDefault();
       const dateVal = document.getElementById('regDate').value;
       const timeVal = document.getElementById('regTime').value;
@@ -517,7 +460,6 @@
       }
 
       const newRecord = {
-        action: 'addRegistration',
         id: 'reg_' + Date.now(),
         date: dateVal,
         time: timeVal,
@@ -527,9 +469,15 @@
         createdAt: new Date().toISOString()
       };
 
-      await sendCloudAction(newRecord);
-      alert("訓練登記成功並已同步至雲端！");
+      registrations.push(newRecord);
+      localStorage.setItem('drone_regs', JSON.stringify(registrations));
+
+      alert("訓練登記成功！");
       document.getElementById('regNotes').value = '';
+      
+      renderRegistrations();
+      renderCalendar();
+      renderAdminTable();
     }
 
     function renderRegistrations() {
@@ -555,7 +503,7 @@
       `).join('');
     }
 
-    async function cancelRegistration(id) {
+    function cancelRegistration(id) {
       const targetRecord = registrations.find(r => r.id === id);
       if (!targetRecord) return;
 
@@ -566,7 +514,12 @@
 
       if (!confirm("確定要取消此筆登記嗎？")) return;
       
-      await sendCloudAction({ action: 'deleteRegistration', id: id });
+      registrations = registrations.filter(r => r.id !== id);
+      localStorage.setItem('drone_regs', JSON.stringify(registrations));
+      
+      renderRegistrations();
+      renderCalendar();
+      renderAdminTable();
     }
 
     function changeMonth(delta) {
@@ -599,7 +552,9 @@
       }
 
       for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const mStr = String(calendarMonth + 1).padStart(2, '0');
+        const dStr = String(day).padStart(2, '0');
+        const dateStr = `${calendarYear}-${mStr}-${dStr}`;
         const dayOfWeek = new Date(calendarYear, calendarMonth, day).getDay();
         
         const dayRegs = registrations.filter(r => r.date === dateStr);
@@ -661,7 +616,7 @@
       `).join('');
     }
 
-    async function handleSaturdayConfig(e) {
+    function handleSaturdayConfig(e) {
       e.preventDefault();
       const dateVal = document.getElementById('adminSatDate').value;
       const statusVal = document.getElementById('adminSatStatus').value;
@@ -675,14 +630,15 @@
         return;
       }
 
-      await sendCloudAction({
-        action: 'setSatConfig',
-        date: dateVal,
+      saturdayConfigs[dateVal] = {
         status: statusVal,
         timeSlot: timeVal || '社師指定時段'
-      });
+      };
 
-      alert("週六時間與狀態已同步至雲端！");
+      localStorage.setItem('drone_sats', JSON.stringify(saturdayConfigs));
+      alert("週六時間與狀態更新完畢！");
+      handleDateChange();
+      renderCalendar();
     }
 
     function renderAdminTable() {
