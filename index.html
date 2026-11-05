@@ -56,24 +56,15 @@
 <body class="min-h-screen flex flex-col justify-between selection:bg-slate-200 selection:text-slate-900">
 
   <script>
-    function parseEnvUsers(envVarName, fallbackPublicName) {
-      try {
-        let rawData = null;
-        if (typeof process !== 'undefined' && process.env) {
-          rawData = process.env[envVarName] || process.env[fallbackPublicName];
-        }
-        if (rawData) {
-          return typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-        }
-      } catch (e) {
-        console.error(`解析環境變數 ${envVarName} 失敗:`, e);
-      }
-      return null;
-    }
-    
     const ENV_ACCOUNTS = {
-      ADMINS: parseEnvUsers('ADMINS', 'NEXT_PUBLIC_ADMINS'),
-      STUDENTS: parseEnvUsers('STUDENTS', 'NEXT_PUBLIC_STUDENTS')
+      ADMINS: {
+        "50162": "chenyichen1106",
+        "teacher01": "chenyichen1106"
+      },
+      STUDENTS: {
+        "s50159": "50159",
+        "s50167": "50167"
+      }
     };
   </script>
 
@@ -312,9 +303,7 @@
           currentUser = { username: userVal, role: 'admin', name: userVal };
           loginSuccess();
         } else {
-          errorEl.innerText = (!adminUsers || Object.keys(adminUsers).length === 0) 
-            ? "系統未偵測到管理者環境變數設定。" 
-            : "管理者帳號或密碼錯誤。";
+          errorEl.innerText = "管理者帳號或密碼錯誤。";
           errorEl.classList.remove('hidden');
         }
       } else {
@@ -323,9 +312,7 @@
           currentUser = { username: userVal, role: 'student', name: userVal };
           loginSuccess();
         } else {
-          errorEl.innerText = (!studentUsers || Object.keys(studentUsers).length === 0) 
-            ? "系統未偵測到學生環境變數設定。" 
-            : "學生帳號或密碼錯誤。";
+          errorEl.innerText = "學生帳號或密碼錯誤。";
           errorEl.classList.remove('hidden');
         }
       }
