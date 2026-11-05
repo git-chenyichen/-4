@@ -257,16 +257,36 @@
       handleDateChange();
     });
 
+    function cleanDateStr(str) {
+      if (!str) return '';
+      const d = new Date(str);
+      if (isNaN(d.getTime())) return String(str).split('T')[0];
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
     async function fetchCloudData() {
       showLoader(true);
       try {
         const res = await fetch(GOOGLE_SCRIPT_URL);
         const data = await res.json();
-        registrations = data.registrations || [];
-        saturdayConfigs = data.satConfigs || {};
+        
+        registrations = (data.registrations || []).map(r => ({
+          ...r,
+          date: cleanDateStr(r.date)
+        }));
+
+        saturdayConfigs = {};
+        if (data.satConfigs) {
+          Object.keys(data.satConfigs).forEach(k => {
+            saturdayConfigs[cleanDateStr(k)] = data.satConfigs[k];
+          });
+        }
         
         renderRegistrations();
-        if (currentTab === 'calendar') renderCalendar();
+        renderCalendar();
         if (currentTab === 'admin') renderAdminTable();
         handleDateChange();
       } catch (e) {
@@ -575,6 +595,7 @@
     function renderCalendar() {
       const titleEl = document.getElementById('calendarMonthTitle');
       const gridEl = document.getElementById('calendarGrid');
+      if (!gridEl) return;
       gridEl.innerHTML = '';
 
       const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
