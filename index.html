@@ -401,6 +401,7 @@
       if (tab === 'booking') {
         tabBooking.className = "py-3 px-4 text-sm font-medium border-b-2 border-slate-900 text-slate-900 whitespace-nowrap";
         contentBooking.classList.remove('hidden');
+        renderRegistrations();
       } else if (tab === 'calendar') {
         tabCalendar.className = "py-3 px-4 text-sm font-medium border-b-2 border-slate-900 text-slate-900 whitespace-nowrap";
         contentCalendar.classList.remove('hidden');
@@ -520,6 +521,8 @@
 
     function renderRegistrations() {
       const container = document.getElementById('myRegistrationsList');
+      if (!currentUser) return;
+      
       const myRegs = registrations.filter(r => r.account === currentUser.username);
 
       if (myRegs.length === 0) {
@@ -541,9 +544,19 @@
     }
 
     function cancelRegistration(id) {
+      const targetRecord = registrations.find(r => r.id === id);
+      if (!targetRecord) return;
+
+      if (currentUser.role !== 'admin' && targetRecord.account !== currentUser.username) {
+        alert("權限不足：您只能取消自己的訓練登記！");
+        return;
+      }
+
       if (!confirm("確定要取消此筆登記嗎？")) return;
+      
       registrations = registrations.filter(r => r.id !== id);
       localStorage.setItem('jiahua_drone_registrations', JSON.stringify(registrations));
+      
       renderRegistrations();
       if (currentTab === 'calendar') renderCalendar();
       if (currentTab === 'admin') renderAdminTable();
