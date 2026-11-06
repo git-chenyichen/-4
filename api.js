@@ -25,9 +25,11 @@ function getCachedData() {
   return { registrations: [], dateConfigs: {}, customEvents: {} };
 }
 
-async function loadCloudData(onDataLoaded) {
-  const localData = getCachedData();
-  if (onDataLoaded) onDataLoaded(localData, true);
+async function loadCloudData(onDataLoaded, forceRefresh = false) {
+  if (!forceRefresh) {
+    const localData = getCachedData();
+    if (onDataLoaded) onDataLoaded(localData, true);
+  }
 
   showLoader(true);
   try {
@@ -50,15 +52,15 @@ async function loadCloudData(onDataLoaded) {
 
     if (data.customEvents) {
       Object.keys(data.customEvents).forEach(k => {
-        dateConfigs[cleanDateStr(k)] = data.customEvents[k];
         customEvents[cleanDateStr(k)] = data.customEvents[k];
       });
     }
 
     const formattedData = { registrations, dateConfigs, customEvents };
-
     localStorage.setItem('drone_cloud_cache', JSON.stringify(formattedData));
+    
     if (onDataLoaded) onDataLoaded(formattedData, false);
+    return formattedData;
   } catch (e) {
     console.error("雲端同步失敗:", e);
   } finally {
@@ -71,6 +73,7 @@ async function sendCloudAction(payload) {
   try {
     await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
   } catch (e) {
