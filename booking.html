@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>登記訓練 - 嘉華中學無人機校隊</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="auth.js"></script>
+  <script src="api.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-50 selection:bg-slate-200">
+  <div id="syncLoader" class="fixed top-0 left-0 w-full h-1 bg-slate-200 overflow-hidden z-50 hidden">
+    <div class="bg-slate-900 h-full animate-pulse w-full"></div>
+  </div>
+
+  <div id="app" class="w-full max-w-4xl mx-auto p-4 sm:p-6 flex-grow">
+    <div class="space-y-6">
+      <!-- 登記區塊 -->
+      <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-base font-semibold text-slate-900">預約訓練時段</h3>
+          <button onclick="refreshData()" class="text-xs text-slate-500 flex items-center gap-1 active:text-slate-900">
+            ↻ 手動同步
+          </button>
+        </div>
+        <form onsubmit="handleRegistration(event)" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">選擇日期</label>
+              <input type="date" id="regDate" required onchange="handleDateChange()" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+              <p id="dateNotice" class="text-xs text-slate-500 mt-1.5"></p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">訓練時段</label>
+              <select id="regTime" required class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800 bg-white">
+                <option value="">-- 請先選擇日期 --</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="nightNotice" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 leading-relaxed">
+            <strong>課後/夜間時段提醒：</strong> 如有晚自習或夜課輔，需向相關單位完成請假手續後才可登記訓練。
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">登記姓名</label>
+            <input type="text" id="regStudentName" required class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" placeholder="請輸入真實姓名" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">備註說明 (選填)</label>
+            <textarea id="regNotes" rows="2" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" placeholder="特殊需求或說明..."></textarea>
+          </div>
+
+          <button type="submit" id="regSubmitBtn" class="w-full sm:w-auto bg-slate-900 text-white text-sm px-8 py-3 rounded-xl active:bg-slate-800 font-medium transition-all">確認送出登記</button>
+        </form>
+      </div>
+
+      <!-- 個人登記列表 -->
+      <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900 mb-3">個人登記紀錄</h3>
+        <div id="myRegistrationsList" class="space-y-2.5">
+          <p class="text-xs text-slate-400 italic">資料載入中...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let cloudData = { registrations: [], dateConfigs: {}, customEvents: {} };
+
+    const WEEKDAY_TIME_OPTIONS = [
+      { id: 'noon', label: '13:25 ~ 13:55 (午休時段)' },
+      { id: 'night_early', label: '17:30 ~ 20:40 (課後/夜間時段)' },
+      { id: 'night_late', label: '19:30 ~ 20:40 (夜間時段)' }
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      currentUser = checkAuth();
+      if (!currentUser) return;
+
+      renderNavbar('booking');
+      document.getElementById('regStudentName').value = currentUser.name;
+      document.getElementById('regDate').value = new Date().toISOString().split('T')[0];
+
+      loadCloudData((data) => {
+        cloudData = data;
+        renderMyRegistrations();
+        handleDateChange();
+      });
+    });
+
+    function refreshData() {
+      loadCloudData((data) => {
+        cloudData = data;
+        renderMyRegistrations();
+        handleDateChange();
+      });
+    }
+
+    function handleDateChange() {
+      const dateVal = document.getElementById('regDate').value;
+      const timeSelect = document.getElementById('regTime');
+      const dateNotice = document.getElementById('dateNotice');
+      const submitBtn = document.getElementById('regSubmitBtn');
+      const nightNotice = document.getElementById('nightNotice');
+
+      timeSelect.innerHTML = '';
+      nightNotice.classList.add('hidden');
+      if (!dateVal) return;
+
+      const config = cloudData.dateConfigs[dateVal];
+      const dayOfWeek = new Date(dateVal + 'T00:00:00').getDay();
+
+      // 管理者個別暫停日優先判斷
+      if (config && config.status === 'paused') {
+        dateNotice.innerText = `［管理者設定］當天暫停開放：${config.reason || '暫停訓練'}`;
+        dateNotice.className = "text-xs text-rose-600 font-medium mt-1";
+        timeSelect.innerHTML = '<option value="">-- 當日暫停開放 --</option>';
+        submitBtn.disabled = true;
+        submitBtn.className = "w-full sm:w-auto bg-slate-300 text-slate-500 text-sm px-6 py-3 rounded-xl cursor-not-allowed font-medium";
+        return;
+      }
+
+      // 管理者特例開放
+      if (config && config.status === 'open') {
+        dateNotice.innerText = `［管理者開放］特定開放時段：${config.timeSlot}`;
+        dateNotice.className = "text-xs text-emerald-600 font-medium mt-1";
+        timeSelect.innerHTML = `<option value="${config.timeSlot}">${config.timeSlot}</option>`;
+        submitBtn.disabled = false;
+        submitBtn.className = "w-full sm:w-auto bg-slate-900 text-white text-sm px-8 py-3 rounded-xl active:bg-slate-800 font-medium";
+        return;
+      }
+
+      // 週日預設關閉
+      if (dayOfWeek === 0) {
+        dateNotice.innerText = "週日不開放登記訓練。";
+        dateNotice.className = "text-xs text-rose-600 font-medium mt-1";
+        timeSelect.innerHTML = '<option value="">-- 週日不開放 --</option>';
+        submitBtn.disabled = true;
+        submitBtn.className = "w-full sm:w-auto bg-slate-300 text-slate-500 text-sm px-6 py-3 rounded-xl cursor-not-allowed font-medium";
+        return;
+      }
+
+      // 週六預設關閉（除非被特例開放）
+      if (dayOfWeek === 6) {
+        dateNotice.innerText = "週六未特別開放訓練。";
+        dateNotice.className = "text-xs text-amber-600 font-medium mt-1";
+        timeSelect.innerHTML = '<option value="">-- 週六未開放 --</option>';
+        submitBtn.disabled = true;
+        submitBtn.className = "w-full sm:w-auto bg-slate-300 text-slate-500 text-sm px-6 py-3 rounded-xl cursor-not-allowed font-medium";
+        return;
+      }
+
+      // 週一至週五預設開放
+      dateNotice.innerText = "週一至週五正常開放時段。";
+      dateNotice.className = "text-xs text-slate-500 mt-1";
+      submitBtn.disabled = false;
+      submitBtn.className = "w-full sm:w-auto bg-slate-900 text-white text-sm px-8 py-3 rounded-xl active:bg-slate-800 font-medium";
+
+      WEEKDAY_TIME_OPTIONS.forEach(opt => {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt.label;
+        optionEl.innerText = opt.label;
+        timeSelect.appendChild(optionEl);
+      });
+
+      timeSelect.onchange = checkNightNotice;
+      checkNightNotice();
+    }
+
+    function checkNightNotice() {
+      const timeVal = document.getElementById('regTime').value;
+      const nightNotice = document.getElementById('nightNotice');
+      if (timeVal.includes('17:30') || timeVal.includes('19:30')) {
+        nightNotice.classList.remove('hidden');
+      } else {
+        nightNotice.classList.add('hidden');
+      }
+    }
+
+    async function handleRegistration(e) {
+      e.preventDefault();
+      const dateVal = document.getElementById('regDate').value;
+      const timeVal = document.getElementById('regTime').value;
+      const studentName = document.getElementById('regStudentName').value.trim();
+      const notes = document.getElementById('regNotes').value.trim();
+
+      const newRecord = {
+        action: 'addRegistration',
+        id: 'reg_' + Date.now(),
+        date: dateVal,
+        time: timeVal,
+        studentName: studentName,
+        account: currentUser.username,
+        notes: notes,
+        createdAt: new Date().toISOString()
+      };
+
+      await sendCloudAction(newRecord);
+      alert("訓練登記成功！");
+      document.getElementById('regNotes').value = '';
+      refreshData();
+    }
+
+    function renderMyRegistrations() {
+      const container = document.getElementById('myRegistrationsList');
+      const myRegs = cloudData.registrations.filter(r => r.account === currentUser.username);
+
+      if (myRegs.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 italic">尚無登記紀錄</p>';
+        return;
+      }
+
+      container.innerHTML = myRegs.map(r => `
+        <div class="flex justify-between items-center p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700">
+          <div>
+            <div class="font-bold text-slate-900 mb-0.5">${r.date}</div>
+            <div class="text-[11px] text-slate-600">${r.time}</div>
+            <div class="text-[11px] text-slate-500 mt-1">姓名: ${r.studentName} ${r.notes ? `(${r.notes})` : ''}</div>
+          </div>
+          <button onclick="cancelRegistration('${r.id}')" class="px-3 py-1.5 text-rose-600 bg-rose-50 border border-rose-100 rounded-lg text-xs font-medium active:bg-rose-100">取消</button>
+        </div>
+      `).join('');
+    }
+
+    async function cancelRegistration(id) {
+      if (!confirm("確定要取消此筆登記嗎？")) return;
+      await sendCloudAction({ action: 'deleteRegistration', id: id });
+      refreshData();
+    }
+  </script>
+</body>
+</html>
