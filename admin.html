@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>控制面板 - 嘉華中學國一4無人機校隊</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="auth.js"></script>
+  <script src="api.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-50">
+  <div id="syncLoader" class="fixed top-0 left-0 w-full h-1 bg-slate-200 overflow-hidden z-50 hidden">
+    <div class="bg-slate-900 h-full animate-pulse w-full"></div>
+  </div>
+
+  <div id="app" class="w-full max-w-4xl mx-auto p-4 sm:p-6 flex-grow">
+    <div class="space-y-6">
+      
+      <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900 mb-1">特定日期開放/暫停與新增行事曆</h3>
+        <p class="text-xs text-slate-500 mb-4">您可以單獨關閉特定日期的登記、強制開放假日、或直接在當天加入行事曆備註。</p>
+        
+        <form onsubmit="handleDateControl(event)" class="space-y-4 max-w-lg">
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">選擇日期</label>
+            <input type="date" id="adminTargetDate" required class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+          </div>
+          
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">開放狀態設定</label>
+            <select id="adminStatus" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800 bg-white">
+              <option value="normal">依預設規則（平日開放、假日關閉）</option>
+              <option value="paused">單獨暫停開放（停課/教練請假）</option>
+              <option value="open">特定開放（例如假日特別訓練）</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">開放時段 (僅選「特定開放」時生效)</label>
+            <input type="text" id="adminTimeSlot" placeholder="例如：09:00 ~ 12:00" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">新增當日行事曆事件/備註</label>
+            <input type="text" id="adminEventText" placeholder="例如：校外競賽 / 器材維護保養" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+          </div>
+
+          <button type="submit" class="bg-slate-900 text-white text-xs px-5 py-2.5 rounded-xl font-medium active:bg-slate-800">儲存設定並同步至雲端</button>
+        </form>
+      </div>
+
+      <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-base font-semibold text-slate-900">全校隊訓練登記總表</h3>
+          <span id="regCountBadge" class="text-xs px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full border border-slate-200">0 筆</span>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs text-slate-600 border-collapse min-w-[500px]">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-900 font-semibold">
+                <th class="p-3">日期</th>
+                <th class="p-3">時段</th>
+                <th class="p-3">學生姓名</th>
+                <th class="p-3">帳號</th>
+                <th class="p-3">備註</th>
+                <th class="p-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="adminTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let cloudData = { registrations: [], dateConfigs: {}, customEvents: {} };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth(true); 
+      renderNavbar('admin');
+
+      loadCloudData((data) => {
+        cloudData = data;
+        renderAdminTable();
+      });
+    });
+
+    async function handleDateControl(e) {
+      e.preventDefault();
+      const dateVal = document.getElementById('adminTargetDate').value;
+      const statusVal = document.getElementById('adminStatus').value;
+      const timeSlotVal = document.getElementById('adminTimeSlot').value.trim();
+      const eventTextVal = document.getElementById('adminEventText').value.trim();
+
+      if (!dateVal) return;
+
+      await sendCloudAction({
+        action: 'setDateControl',
+        date: dateVal,
+        status: statusVal,
+        timeSlot: timeSlotVal,
+        eventText: eventTextVal
+      });
+
+      alert("設定已更新完畢！");
+      loadCloudData((data) => {
+        cloudData = data;
+        renderAdminTable();
+      });
+    }
+
+    function renderAdminTable() {
+      const tbody = document.getElementById('adminTableBody');
+      const badge = document.getElementById('regCountBadge');
+      const regs = cloudData.registrations;
+
+      badge.innerText = `${regs.length} 筆`;
+
+      if (regs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">目前沒有任何登記資料</td></tr>';
+        return;
+      }
+
+      const sorted = [...regs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      tbody.innerHTML = sorted.map(r => `
+        <tr class="border-b border-slate-100 hover:bg-slate-50">
+          <td class="p-3 font-medium text-slate-900 whitespace-nowrap">${r.date}</td>
+          <td class="p-3 text-[11px]">${r.time}</td>
+          <td class="p-3 font-bold text-slate-800 whitespace-nowrap">${r.studentName}</td>
+          <td class="p-3 text-slate-500">${r.account}</td>
+          <td class="p-3 text-slate-500">${r.notes || '-'}</td>
+          <td class="p-3 text-right whitespace-nowrap">
+            <button onclick="deleteRegistration('${r.id}')" class="text-rose-600 font-medium">刪除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function deleteRegistration(id) {
+      if (!confirm("確定要刪除這筆登記嗎？")) return;
+      await sendCloudAction({ action: 'deleteRegistration', id: id });
+      loadCloudData((data) => {
+        cloudData = data;
+        renderAdminTable();
+      });
+    }
+  </script>
+</body>
+</html>
