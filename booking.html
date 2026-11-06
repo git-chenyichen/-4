@@ -71,7 +71,7 @@
     const WEEKDAY_TIME_OPTIONS = [
       { id: 'noon', label: '13:25 ~ 13:55 (午休時段)' },
       { id: 'night_early', label: '17:30 ~ 20:40 (課後/夜間時段)' },
-      { id: 'night_late', label: '19:30 ~ 20:40 (晚自習時段)' }
+      { id: 'night_late', label: '19:30 ~ 20:40 (夜間時段)' }
     ];
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -108,12 +108,14 @@
       nightNotice.classList.add('hidden');
       if (!dateVal) return;
 
-      const config = cloudData.dateConfigs[dateVal];
-      const dayOfWeek = new Date(dateVal + 'T00:00:00').getDay();
+      const cleanVal = cleanDateStr(dateVal);
+      const config = cloudData.dateConfigs[cleanVal];
+      const dateObj = new Date(dateVal + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay();
 
       if (config && config.status === 'paused') {
-        dateNotice.innerText = `［管理者設定］當天暫停開放：${config.reason || '暫停訓練'}`;
-        dateNotice.className = "text-xs text-rose-600 font-medium mt-1";
+        dateNotice.innerText = `［管理者設定］當日暫停開放訓練。`;
+        dateNotice.className = "text-xs text-rose-600 font-semibold mt-1.5";
         timeSelect.innerHTML = '<option value="">-- 當日暫停開放 --</option>';
         submitBtn.disabled = true;
         submitBtn.className = "w-full sm:w-auto bg-slate-300 text-slate-500 text-sm px-6 py-3 rounded-xl cursor-not-allowed font-medium";
@@ -121,9 +123,10 @@
       }
 
       if (config && config.status === 'open') {
-        dateNotice.innerText = `［管理者開放］特定開放時段：${config.timeSlot}`;
-        dateNotice.className = "text-xs text-emerald-600 font-medium mt-1";
-        timeSelect.innerHTML = `<option value="${config.timeSlot}">${config.timeSlot}</option>`;
+        const slot = config.timeSlot || '09:00 ~ 12:00';
+        dateNotice.innerText = `［管理者開放］特定開放時段：${slot}`;
+        dateNotice.className = "text-xs text-emerald-600 font-semibold mt-1.5";
+        timeSelect.innerHTML = `<option value="${slot}">${slot}</option>`;
         submitBtn.disabled = false;
         submitBtn.className = "w-full sm:w-auto bg-slate-900 text-white text-sm px-8 py-3 rounded-xl active:bg-slate-800 font-medium";
         return;
@@ -131,7 +134,7 @@
 
       if (dayOfWeek === 0) {
         dateNotice.innerText = "週日不開放登記訓練。";
-        dateNotice.className = "text-xs text-rose-600 font-medium mt-1";
+        dateNotice.className = "text-xs text-rose-600 font-medium mt-1.5";
         timeSelect.innerHTML = '<option value="">-- 週日不開放 --</option>';
         submitBtn.disabled = true;
         submitBtn.className = "w-full sm:w-auto bg-slate-300 text-slate-500 text-sm px-6 py-3 rounded-xl cursor-not-allowed font-medium";
@@ -139,16 +142,16 @@
       }
 
       if (dayOfWeek === 6) {
-        dateNotice.innerText = "週六未特別開放訓練。";
-        dateNotice.className = "text-xs text-amber-600 font-medium mt-1";
-        timeSelect.innerHTML = '<option value="">-- 週六未開放 --</option>';
+        dateNotice.innerText = "該週六目前未開放登記。";
+        dateNotice.className = "text-xs text-amber-600 font-medium mt-1.5";
+        timeSelect.innerHTML = '<option value="">-- 週六暫不開放 --</option>';
         submitBtn.disabled = true;
         submitBtn.className = "w-full sm:w-auto bg-slate-300 text-slate-500 text-sm px-6 py-3 rounded-xl cursor-not-allowed font-medium";
         return;
       }
 
       dateNotice.innerText = "週一至週五正常開放時段。";
-      dateNotice.className = "text-xs text-slate-500 mt-1";
+      dateNotice.className = "text-xs text-slate-500 mt-1.5";
       submitBtn.disabled = false;
       submitBtn.className = "w-full sm:w-auto bg-slate-900 text-white text-sm px-8 py-3 rounded-xl active:bg-slate-800 font-medium";
 
@@ -211,7 +214,7 @@
           <div>
             <div class="font-bold text-slate-900 mb-0.5">${r.date}</div>
             <div class="text-[11px] text-slate-600">${r.time}</div>
-            <div class="text-[11px] text-slate-500 mt-1">姓名: ${r.studentName} ${r.notes ? `(${r.notes})` : ''}</div>
+            <div class="text-[11px] text-slate-500 mt-1">姓名: ${r.studentName}${r.notes ? `(${r.notes})` : ''}</div>
           </div>
           <button onclick="cancelRegistration('${r.id}')" class="px-3 py-1.5 text-rose-600 bg-rose-50 border border-rose-100 rounded-lg text-xs font-medium active:bg-rose-100">取消</button>
         </div>
