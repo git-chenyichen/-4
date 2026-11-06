@@ -15,7 +15,6 @@
 
   <div id="app" class="w-full max-w-4xl mx-auto p-4 sm:p-6 flex-grow">
     <div class="space-y-6">
-      <!-- 登記區塊 -->
       <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-base font-semibold text-slate-900">預約訓練時段</h3>
@@ -56,7 +55,6 @@
         </form>
       </div>
 
-      <!-- 個人登記列表 -->
       <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
         <h3 class="text-base font-semibold text-slate-900 mb-3">個人登記紀錄</h3>
         <div id="myRegistrationsList" class="space-y-2.5">
@@ -73,7 +71,7 @@
     const WEEKDAY_TIME_OPTIONS = [
       { id: 'noon', label: '13:25 ~ 13:55 (午休時段)' },
       { id: 'night_early', label: '17:30 ~ 20:40 (課後/夜間時段)' },
-      { id: 'night_late', label: '19:30 ~ 20:40 (夜間時段)' }
+      { id: 'night_late', label: '19:30 ~ 20:40 (晚自習時段)' }
     ];
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -113,7 +111,6 @@
       const config = cloudData.dateConfigs[dateVal];
       const dayOfWeek = new Date(dateVal + 'T00:00:00').getDay();
 
-      // 管理者個別暫停日優先判斷
       if (config && config.status === 'paused') {
         dateNotice.innerText = `［管理者設定］當天暫停開放：${config.reason || '暫停訓練'}`;
         dateNotice.className = "text-xs text-rose-600 font-medium mt-1";
@@ -123,7 +120,6 @@
         return;
       }
 
-      // 管理者特例開放
       if (config && config.status === 'open') {
         dateNotice.innerText = `［管理者開放］特定開放時段：${config.timeSlot}`;
         dateNotice.className = "text-xs text-emerald-600 font-medium mt-1";
@@ -133,7 +129,6 @@
         return;
       }
 
-      // 週日預設關閉
       if (dayOfWeek === 0) {
         dateNotice.innerText = "週日不開放登記訓練。";
         dateNotice.className = "text-xs text-rose-600 font-medium mt-1";
@@ -143,7 +138,6 @@
         return;
       }
 
-      // 週六預設關閉（除非被特例開放）
       if (dayOfWeek === 6) {
         dateNotice.innerText = "週六未特別開放訓練。";
         dateNotice.className = "text-xs text-amber-600 font-medium mt-1";
@@ -153,7 +147,6 @@
         return;
       }
 
-      // 週一至週五預設開放
       dateNotice.innerText = "週一至週五正常開放時段。";
       dateNotice.className = "text-xs text-slate-500 mt-1";
       submitBtn.disabled = false;
