@@ -82,7 +82,7 @@
       document.getElementById('regStudentName').value = currentUser.name;
       document.getElementById('regDate').value = new Date().toISOString().split('T')[0];
 
-      loadCloudData((data) => {
+      loadCloudData((data, isFromCache) => {
         cloudData = data;
         renderMyRegistrations();
         handleDateChange();
@@ -90,11 +90,11 @@
     });
 
     function refreshData() {
-      loadCloudData((data) => {
+      loadCloudData((data, isFromCache) => {
         cloudData = data;
         renderMyRegistrations();
         handleDateChange();
-      });
+      }, true);
     }
 
     function handleDateChange() {
@@ -109,7 +109,7 @@
       if (!dateVal) return;
 
       const cleanVal = cleanDateStr(dateVal);
-      const config = cloudData.dateConfigs[cleanVal];
+      const config = cloudData.dateConfigs ? cloudData.dateConfigs[cleanVal] : null;
       const dateObj = new Date(dateVal + 'T00:00:00');
       const dayOfWeek = dateObj.getDay();
 
@@ -214,7 +214,7 @@
           <div>
             <div class="font-bold text-slate-900 mb-0.5">${r.date}</div>
             <div class="text-[11px] text-slate-600">${r.time}</div>
-            <div class="text-[11px] text-slate-500 mt-1">姓名: ${r.studentName}${r.notes ? `(${r.notes})` : ''}</div>
+            <div class="text-[11px] text-slate-500 mt-1">姓名: ${r.studentName} ${r.notes ? `(${r.notes})` : ''}</div>
           </div>
           <button onclick="cancelRegistration('${r.id}')" class="px-3 py-1.5 text-rose-600 bg-rose-50 border border-rose-100 rounded-lg text-xs font-medium active:bg-rose-100">取消</button>
         </div>
