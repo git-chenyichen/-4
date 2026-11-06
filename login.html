@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>登入 - 嘉華中學國一4無人機校隊</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="auth.js"></script>
+</head>
+<body class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+  <div class="bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm w-full max-w-sm">
+    <div class="text-center mb-6">
+      <div class="text-xs font-semibold text-slate-400 uppercase">嘉華中學 國一4 無人機校隊</div>
+      <h2 class="text-xl font-bold text-slate-900">系統身分驗證</h2>
+    </div>
+    
+    <div class="mb-5 flex border-b border-slate-200">
+      <button id="tabStudent" onclick="setRole('student')" class="flex-1 py-2 text-sm font-medium border-b-2 border-slate-900 text-slate-900 text-center">一般學生</button>
+      <button id="tabAdmin" onclick="setRole('admin')" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-slate-400 text-center">管理者</button>
+    </div>
+
+    <form onsubmit="handleLogin(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1" id="userLabel">帳號 / 學號</label>
+        <input type="text" id="username" required autocomplete="username" class="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800" placeholder="請輸入帳號" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">密碼</label>
+        <input type="password" id="password" required autocomplete="current-password" class="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800" placeholder="請輸入密碼" />
+      </div>
+      <p id="loginError" class="text-xs text-rose-600 hidden"></p>
+      <button type="submit" class="w-full bg-slate-900 text-white text-sm py-3 rounded-xl active:bg-slate-800 font-medium transition-all shadow-sm">登入系統</button>
+    </form>
+  </div>
+
+  <script>
+    let selectedRole = 'student';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = getCurrentUser();
+      if (user) window.location.href = 'booking.html';
+    });
+
+    function setRole(role) {
+      selectedRole = role;
+      document.getElementById('tabStudent').className = role === 'student' 
+        ? "flex-1 py-2 text-sm font-medium border-b-2 border-slate-900 text-slate-900 text-center" 
+        : "flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-slate-400 text-center";
+      document.getElementById('tabAdmin').className = role === 'admin' 
+        ? "flex-1 py-2 text-sm font-medium border-b-2 border-slate-900 text-slate-900 text-center" 
+        : "flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-slate-400 text-center";
+      document.getElementById('userLabel').innerText = role === 'student' ? "帳號 / 學號" : "管理者帳號";
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const userVal = document.getElementById('username').value.trim();
+      const passVal = document.getElementById('password').value.trim();
+      
+      const result = loginUser(userVal, passVal, selectedRole);
+      if (result.success) {
+        window.location.href = 'booking.html';
+      } else {
+        const err = document.getElementById('loginError');
+        err.innerText = result.message;
+        err.classList.remove('hidden');
+      }
+    }
+  </script>
+</body>
+</html>
