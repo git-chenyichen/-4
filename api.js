@@ -28,7 +28,9 @@ function getCachedData() {
 async function loadCloudData(onDataLoaded, forceRefresh = false) {
   if (!forceRefresh) {
     const localData = getCachedData();
-    if (onDataLoaded) onDataLoaded(localData, true);
+    if (typeof onDataLoaded === 'function') {
+      onDataLoaded(localData, true);
+    }
   }
 
   showLoader(true);
@@ -57,9 +59,12 @@ async function loadCloudData(onDataLoaded, forceRefresh = false) {
     }
 
     const formattedData = { registrations, dateConfigs, customEvents };
+    
     localStorage.setItem('drone_cloud_cache', JSON.stringify(formattedData));
     
-    if (onDataLoaded) onDataLoaded(formattedData, false);
+    if (typeof onDataLoaded === 'function') {
+      onDataLoaded(formattedData, false);
+    }
     return formattedData;
   } catch (e) {
     console.error("雲端同步失敗:", e);
