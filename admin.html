@@ -17,35 +17,63 @@
     <div class="space-y-6">
       
       <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
-        <h3 class="text-base font-semibold text-slate-900 mb-1">特定日期開放/暫停與新增行事曆</h3>
-        <p class="text-xs text-slate-500 mb-4">您可以單獨關閉特定日期的登記、強制開放假日、或直接在當天加入行事曆備註。</p>
+        <h3 class="text-base font-semibold text-slate-900 mb-1">週六開放與行事曆設定</h3>
+        <p class="text-xs text-slate-500 mb-4">在此設定週六是否開放訓練、開放時段，並可直接同步寫入月曆事件。</p>
         
-        <form onsubmit="handleDateControl(event)" class="space-y-4 max-w-lg">
+        <form onsubmit="handleSaturdaySubmit(event)" class="space-y-4 max-w-lg">
           <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">選擇日期</label>
-            <input type="date" id="adminTargetDate" required class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+            <label class="block text-xs font-medium text-slate-500 mb-1">選擇週六日期</label>
+            <input type="date" id="adminSatDate" required onchange="validateSaturday(this)" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+            <p id="satDateCheckNotice" class="text-xs text-rose-500 mt-1 hidden">⚠️ 請選擇正確的「星期六」！</p>
           </div>
           
           <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">開放狀態設定</label>
-            <select id="adminStatus" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800 bg-white">
-              <option value="normal">依預設規則（平日開放、假日關閉）</option>
-              <option value="paused">單獨暫停開放（停課/教練請假）</option>
-              <option value="open">特定開放（例如假日特別訓練）</option>
+            <label class="block text-xs font-medium text-slate-500 mb-1">週六開放狀態</label>
+            <select id="adminSatStatus" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800 bg-white">
+              <option value="open">開放訓練</option>
+              <option value="paused">暫停開放 / 放假</option>
             </select>
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">開放時段 (僅選「特定開放」時生效)</label>
-            <input type="text" id="adminTimeSlot" placeholder="例如：09:00 ~ 12:00" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+            <label class="block text-xs font-medium text-slate-500 mb-1">開放時段 (例如：09:00 ~ 12:00)</label>
+            <input type="text" id="adminSatTimeSlot" placeholder="例如：09:00 ~ 12:00" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">新增當日行事曆事件/備註</label>
-            <input type="text" id="adminEventText" placeholder="例如：校外競賽 / 器材維護保養" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+            <label class="block text-xs font-medium text-slate-500 mb-1">新增週六行事曆事件 (選填，將顯示於月曆上)</label>
+            <input type="text" id="adminSatEventText" placeholder="例如：週六自主集訓 / 校隊測驗" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
           </div>
 
-          <button type="submit" class="bg-slate-900 text-white text-xs px-5 py-2.5 rounded-xl font-medium active:bg-slate-800">儲存設定並同步至雲端</button>
+          <button type="submit" class="bg-slate-900 text-white text-xs px-5 py-2.5 rounded-xl font-medium active:bg-slate-800">儲存週六設定並同步雲端</button>
+        </form>
+      </div>
+
+      <div class="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900 mb-1">平日 / 任意日期行事曆與暫停設定</h3>
+        <p class="text-xs text-slate-500 mb-4">可用於平日暫停開放（如段考週）、新增比賽/維修等行事曆事件。</p>
+        
+        <form onsubmit="handleGeneralDateSubmit(event)" class="space-y-4 max-w-lg">
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">選擇日期</label>
+            <input type="date" id="adminGeneralDate" required class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+          </div>
+          
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">開放狀態</label>
+            <select id="adminGeneralStatus" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800 bg-white">
+              <option value="normal">依預設規則（平日開放）</option>
+              <option value="paused">單獨暫停開放（如：考前暫停、放假）</option>
+              <option value="open">特定開放</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">行事曆文字標籤 (將同步顯示於月曆與名單頁)</label>
+            <input type="text" id="adminGeneralEventText" placeholder="例如：期中考週暫停 / 無人機保養" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-800" />
+          </div>
+
+          <button type="submit" class="bg-slate-900 text-white text-xs px-5 py-2.5 rounded-xl font-medium active:bg-slate-800">儲存日期設定並同步雲端</button>
         </form>
       </div>
 
@@ -80,7 +108,7 @@
     let cloudData = { registrations: [], dateConfigs: {}, customEvents: {} };
 
     document.addEventListener('DOMContentLoaded', () => {
-      checkAuth(true); 
+      checkAuth(true);
       renderNavbar('admin');
 
       loadCloudData((data) => {
@@ -89,12 +117,51 @@
       });
     });
 
-    async function handleDateControl(e) {
+    function validateSaturday(input) {
+      const notice = document.getElementById('satDateCheckNotice');
+      if (!input.value) return;
+      const day = new Date(input.value + 'T00:00:00').getDay();
+      if (day !== 6) {
+        notice.classList.remove('hidden');
+      } else {
+        notice.classList.add('hidden');
+      }
+    }
+
+    async function handleSaturdaySubmit(e) {
       e.preventDefault();
-      const dateVal = document.getElementById('adminTargetDate').value;
-      const statusVal = document.getElementById('adminStatus').value;
-      const timeSlotVal = document.getElementById('adminTimeSlot').value.trim();
-      const eventTextVal = document.getElementById('adminEventText').value.trim();
+      const dateVal = document.getElementById('adminSatDate').value;
+      const statusVal = document.getElementById('adminSatStatus').value;
+      const timeSlotVal = document.getElementById('adminSatTimeSlot').value.trim() || '09:00 ~ 12:00';
+      const eventTextVal = document.getElementById('adminSatEventText').value.trim();
+
+      if (!dateVal) return;
+      const day = new Date(dateVal + 'T00:00:00').getDay();
+      if (day !== 6) {
+        alert("請選擇正確的「星期六」日期！");
+        return;
+      }
+
+      await sendCloudAction({
+        action: 'setDateControl',
+        date: dateVal,
+        status: statusVal,
+        timeSlot: timeSlotVal,
+        eventText: eventTextVal || (statusVal === 'open' ? '週六訓練' : '週六暫停')
+      });
+
+      alert("週六開放與行事曆已成功同步至雲端！");
+      loadCloudData((data) => {
+        cloudData = data;
+        renderAdminTable();
+      });
+    }
+
+    async function handleGeneralDateSubmit(e) {
+      e.preventDefault();
+      const dateVal = document.getElementById('adminGeneralDate').value;
+      const statusVal = document.getElementById('adminGeneralStatus').value;
+      const eventTextVal = document.getElementById('adminGeneralEventText').value.trim();
 
       if (!dateVal) return;
 
@@ -102,11 +169,11 @@
         action: 'setDateControl',
         date: dateVal,
         status: statusVal,
-        timeSlot: timeSlotVal,
+        timeSlot: '',
         eventText: eventTextVal
       });
 
-      alert("設定已更新完畢！");
+      alert("日期設定與行事曆已更新！");
       loadCloudData((data) => {
         cloudData = data;
         renderAdminTable();
