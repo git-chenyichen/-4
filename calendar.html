@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>當月月曆 - 嘉華中學國一4無人機校隊</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="auth.js"></script>
+  <script src="api.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-50">
+  <div id="syncLoader" class="fixed top-0 left-0 w-full h-1 bg-slate-200 overflow-hidden z-50 hidden">
+    <div class="bg-slate-900 h-full animate-pulse w-full"></div>
+  </div>
+
+  <div id="app" class="w-full max-w-4xl mx-auto p-4 sm:p-6 flex-grow">
+    <div class="space-y-4">
+      <div class="bg-white border border-slate-200 p-4 sm:p-6 rounded-2xl shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+          <h3 id="calendarMonthTitle" class="text-base sm:text-lg font-bold text-slate-900">月曆</h3>
+          <div class="flex items-center gap-1.5">
+            <button onclick="changeMonth(-1)" class="px-2.5 py-1 border border-slate-200 rounded-lg text-xs active:bg-slate-50">&larr; 上月</button>
+            <button onclick="changeMonth(1)" class="px-2.5 py-1 border border-slate-200 rounded-lg text-xs active:bg-slate-50">下月 &rarr;</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-t-xl overflow-hidden text-center">
+          <div class="bg-slate-50 py-1.5 text-[11px] font-semibold text-rose-500">日</div>
+          <div class="bg-slate-50 py-1.5 text-[11px] font-semibold text-slate-600">一</div>
+          <div class="bg-slate-50 py-1.5 text-[11px] font-semibold text-slate-600">二</div>
+          <div class="bg-slate-50 py-1.5 text-[11px] font-semibold text-slate-600">三</div>
+          <div class="bg-slate-50 py-1.5 text-[11px] font-semibold text-slate-600">四</div>
+          <div class="bg-slate-50 py-1.5 text-[11px] font-semibold text-slate-600">五</div>
+          <div class="bg-slate-50 py-1.5 text-[11px] font-semibold text-slate-600">六</div>
+        </div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-px bg-slate-200 border-x border-b border-slate-200 rounded-b-xl overflow-hidden min-h-[300px]">
+        </div>
+      </div>
+
+      <div id="dayDetailCard" class="bg-white border border-slate-200 p-4 sm:p-6 rounded-2xl shadow-sm hidden">
+        <h4 id="selectedDateTitle" class="text-xs font-bold text-slate-900 mb-3 border-b border-slate-100 pb-2">當日登記名單</h4>
+        <div id="selectedDateRoster" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let calendarYear = new Date().getFullYear();
+    let calendarMonth = new Date().getMonth(); 
+    let cloudData = { registrations: [], dateConfigs: {}, customEvents: {} };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      renderNavbar('calendar');
+
+      loadCloudData((data) => {
+        cloudData = data;
+        renderCalendar();
+      });
+    });
+
+    function changeMonth(delta) {
+      calendarMonth += delta;
+      if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; } 
+      else if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const titleEl = document.getElementById('calendarMonthTitle');
+      const gridEl = document.getElementById('calendarGrid');
+      gridEl.innerHTML = '';
+
+      const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+      titleEl.innerText = `${calendarYear} 年 ${monthNames[calendarMonth]}`;
+
+      const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+      const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = "bg-white p-1 min-h-[55px] sm:min-h-[75px] opacity-30";
+        gridEl.appendChild(emptyCell);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const mStr = String(calendarMonth + 1).padStart(2, '0');
+        const dStr = String(day).padStart(2, '0');
+        const dateStr = `${calendarYear}-${mStr}-${dStr}`;
+        
+        const dayRegs = cloudData.registrations.filter(r => r.date === dateStr);
+        const uniqueAttendees = [...new Set(dayRegs.map(r => r.studentName))];
+        const dateConfig = cloudData.dateConfigs[dateStr];
+        const eventText = cloudData.customEvents[dateStr];
+
+        const cell = document.createElement('div');
+        cell.className = "bg-white p-1.5 sm:p-2 min-h-[60px] sm:min-h-[75px] flex flex-col justify-between active:bg-slate-100 cursor-pointer border-t border-slate-100 transition-colors";
+        cell.onclick = () => selectCalendarDay(dateStr, dayRegs, eventText, dateConfig);
+
+        let badgeHtml = '';
+        if (dateConfig && dateConfig.status === 'paused') {
+          badgeHtml = `<span class="text-[9px] bg-rose-100 text-rose-700 px-1 py-0.5 rounded">暫停</span>`;
+        } else if (eventText) {
+          badgeHtml = `<span class="text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded truncate max-w-[40px]">${eventText}</span>`;
+        }
+
+        cell.innerHTML = `
+          <div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-semibold text-slate-800">${day}</span>
+              ${badgeHtml}
+            </div>
+            ${uniqueAttendees.length > 0 ? `
+              <div class="mt-1">
+                <span class="inline-block px-1.5 py-0.2 text-[9px] sm:text-[10px] font-bold bg-slate-900 text-white rounded-full">
+                  ${uniqueAttendees.length} 人
+                </span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+
+        gridEl.appendChild(cell);
+      }
+    }
+
+    function selectCalendarDay(dateStr, dayRegs, eventText, dateConfig) {
+      const card = document.getElementById('dayDetailCard');
+      const title = document.getElementById('selectedDateTitle');
+      const roster = document.getElementById('selectedDateRoster');
+
+      card.classList.remove('hidden');
+      let statusNote = '';
+      if (dateConfig && dateConfig.status === 'paused') statusNote = `［已設定暫停開放: ${dateConfig.reason || ''}］`;
+      if (eventText) statusNote += ` 行事曆：${eventText}`;
+
+      title.innerText = `${dateStr} 訓練資訊 ${statusNote} (預約: ${dayRegs.length}人)`;
+
+      if (dayRegs.length === 0) {
+        roster.innerHTML = '<p class="text-xs text-slate-400 italic">當日尚無登記人員</p>';
+        return;
+      }
+
+      roster.innerHTML = dayRegs.map(r => `
+        <div class="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+          <div>
+            <span class="font-bold text-slate-900 mr-1">${r.studentName}</span>
+            <span class="text-slate-500 text-[11px]">${r.time}</span>
+          </div>
+          ${r.notes ? `<span class="text-slate-400 text-[10px]">${r.notes}</span>` : ''}
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
