@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>當月月曆 - 嘉華中學無人機校隊</title>
+  <title>當月月曆 - 嘉華中學國一4無人機校隊</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="auth.js"></script>
   <script src="api.js"></script>
@@ -69,6 +69,7 @@
     function renderCalendar() {
       const titleEl = document.getElementById('calendarMonthTitle');
       const gridEl = document.getElementById('calendarGrid');
+      if (!gridEl) return;
       gridEl.innerHTML = '';
 
       const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
@@ -89,22 +90,26 @@
         const dateStr = `${calendarYear}-${mStr}-${dStr}`;
         const dayOfWeek = new Date(calendarYear, calendarMonth, day).getDay();
         
-        const dayRegs = cloudData.registrations.filter(r => r.date === dateStr);
+        const dayRegs = cloudData.registrations.filter(r => cleanDateStr(r.date) === dateStr);
         const uniqueAttendees = [...new Set(dayRegs.map(r => r.studentName))];
+        
         const dateConfig = cloudData.dateConfigs[dateStr];
         const eventText = cloudData.customEvents[dateStr];
 
         const cell = document.createElement('div');
-        cell.className = "bg-white p-1.5 sm:p-2 min-h-[60px] sm:min-h-[75px] flex flex-col justify-between active:bg-slate-100 cursor-pointer border-t border-slate-100 transition-colors";
+        cell.className = "bg-white p-1.5 sm:p-2 min-h-[65px] sm:min-h-[80px] flex flex-col justify-between active:bg-slate-100 cursor-pointer border-t border-slate-100 transition-colors";
         cell.onclick = () => selectCalendarDay(dateStr, dayRegs, eventText, dateConfig);
 
         let badgeHtml = '';
         if (dateConfig && dateConfig.status === 'paused') {
-          badgeHtml = `<span class="text-[9px] bg-rose-100 text-rose-700 px-1 py-0.5 rounded">暫停</span>`;
+          badgeHtml = `<span class="text-[9px] bg-rose-100 text-rose-700 font-bold px-1 py-0.5 rounded">暫停</span>`;
         } else if (dateConfig && dateConfig.status === 'open') {
-          badgeHtml = `<span class="text-[9px] bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded font-bold">開放</span>`;
-        } else if (eventText) {
-          badgeHtml = `<span class="text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded truncate max-w-[45px]">${eventText}</span>`;
+          badgeHtml = `<span class="text-[9px] bg-emerald-100 text-emerald-700 font-bold px-1 py-0.5 rounded">開放</span>`;
+        }
+
+        let eventHtml = '';
+        if (eventText) {
+          eventHtml = `<div class="text-[9px] bg-blue-50 text-blue-700 border border-blue-200 px-1 py-0.5 rounded mt-1 truncate" title="${eventText}">${eventText}</div>`;
         }
 
         cell.innerHTML = `
@@ -113,7 +118,7 @@
               <span class="text-xs font-semibold ${dayOfWeek === 0 ? 'text-rose-500' : 'text-slate-800'}">${day}</span>
               ${badgeHtml}
             </div>
-            ${eventText && !badgeHtml.includes(eventText) ? `<div class="text-[9px] text-blue-600 truncate mt-0.5">${eventText}</div>` : ''}
+            ${eventHtml}
             ${uniqueAttendees.length > 0 ? `
               <div class="mt-1">
                 <span class="inline-block px-1.5 py-0.2 text-[9px] sm:text-[10px] font-bold bg-slate-900 text-white rounded-full">
