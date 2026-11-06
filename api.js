@@ -2,11 +2,15 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlNzU6sVK9qW
 
 function cleanDateStr(str) {
   if (!str) return '';
-  if (typeof str === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(str.trim())) {
-    return str.trim();
+  let s = String(str).trim();
+  if (s.includes('T')) {
+    s = s.split('T')[0];
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return s;
   }
   const d = new Date(str);
-  if (isNaN(d.getTime())) return String(str).split('T')[0];
+  if (isNaN(d.getTime())) return s;
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -27,7 +31,7 @@ async function loadCloudData(onDataLoaded) {
 
   showLoader(true);
   try {
-    const res = await fetch(GOOGLE_SCRIPT_URL + '?t=' + Date.now()); 
+    const res = await fetch(GOOGLE_SCRIPT_URL + '?t=' + Date.now());
     const data = await res.json();
     
     const registrations = (data.registrations || []).map(r => ({
@@ -40,22 +44,20 @@ async function loadCloudData(onDataLoaded) {
 
     if (data.dateConfigs) {
       Object.keys(data.dateConfigs).forEach(k => {
-        const cleanK = cleanDateStr(k);
-        dateConfigs[cleanK] = data.dateConfigs[k];
+        dateConfigs[cleanDateStr(k)] = data.dateConfigs[k];
       });
     }
 
     if (data.customEvents) {
       Object.keys(data.customEvents).forEach(k => {
-        const cleanK = cleanDateStr(k);
-        customEvents[cleanK] = data.customEvents[k];
+        dateConfigs[cleanDateStr(k)] = data.customEvents[k];
+        customEvents[cleanDateStr(k)] = data.customEvents[k];
       });
     }
 
     const formattedData = { registrations, dateConfigs, customEvents };
 
     localStorage.setItem('drone_cloud_cache', JSON.stringify(formattedData));
-
     if (onDataLoaded) onDataLoaded(formattedData, false);
   } catch (e) {
     console.error("雲端同步失敗:", e);
